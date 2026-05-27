@@ -1,0 +1,15 @@
+{
+  "name": "aliaa-jobs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud-hosted Job Search Hub auto-refreshed daily via GitHub Actions + Apify",
+  "scripts": {
+    "scrape": "node scripts/scrape.js",
+    "process": "node scripts/process.js",
+    "build": "node scripts/build-hub.js",
+    "refresh": "node scripts/scrape.js && node scripts/process.js && node scripts/build-hub.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
