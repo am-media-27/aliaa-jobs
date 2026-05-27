@@ -79,42 +79,21 @@ const ACTORS = [
 
 async function runActor({ name, actor, input }){
   console.log(`[${name}] Starting ${actor}...`);
-  // Start run synchronously — this waits until the actor finishes and returns the dataset id
-  const startUrl = `https://api.apify.com/v2/acts/${actor}/run-sync?token=${TOKEN}&timeout=300`;
-  const resp = await fetch(startUrl, {
+  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${TOKEN}&timeout=600&clean=true`;
+  const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input)
   });
-  if (!resp.ok && resp.status !== 201) {
-    console.error(`[${name}] FAILED: HTTP ${resp.status}`);
+  if (!resp.ok) {
     const text = await resp.text();
-    console.error(text.slice(0, 500));
+    console.error(`[${name}] FAILED: HTTP ${resp.status} — ${text.slice(0, 300)}`);
+    fs.writeFileSync(path.join(DATA_DIR, name + '.json'), '[]');
     return { name, items: [], error: `HTTP ${resp.status}` };
   }
-  // The run is done. Fetch its dataset.
-  const runInfo = await resp.json().catch(() => null);
-  const datasetId = runInfo?.data?.defaultDatasetId;
-  if (!datasetId) {
-    console.error(`[${name}] No dataset returned`);
-    return { name, items: [], error: 'no dataset' };
-  }
-  const dataResp = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?clean=true&limit=300&token=${TOKEN}`);
-  const items = await dataResp.json();
-  console.log(`[${name}] Got ${items.length} items`);
-  fs.writeFileSync(path.join(DATA_DIR, name + '.json'), JSON.stringify(items));
-  return { name, items, count: items.length };
+  const items = await resp.json().catch(() => []);
+  const arr = Array.isArray(items) ? items : (items.items || []);
+  console.log(`[${name}] Got ${arr.length} items`);
+  fs.writeFileSync(path.join(DATA_DIR, name + '.json'), JSON.stringify(arr));
+  return { name, items: arr, count: arr.length };
 }
-
-(async () => {
-  const results = [];
-  // Run in parallel for speed
-  const promises = ACTORS.map(a => runActor(a).catch(e => {
-    console.error(`[${a.name}] Exception:`, e.message);
-    return { name: a.name, items: [], error: e.message };
-  }));
-  const settled = await Promise.all(promises);
-  for (const r of settled) results.push({ name: r.name, count: r.items ? r.items.length : 0, error: r.error });
-  fs.writeFileSync(path.join(DATA_DIR, '_summary.json'), JSON.stringify(results, null, 2));
-  console.log('Scrape summary:', JSON.stringify(results, null, 2));
-})();
