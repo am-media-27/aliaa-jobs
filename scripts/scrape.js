@@ -1,13 +1,9 @@
 #!/usr/bin/env node
-// Trigger the Apify scrapers and save their results to data/raw/*.json
 const fs = require('fs');
 const path = require('path');
 
 const TOKEN = process.env.APIFY_TOKEN;
-if (!TOKEN) {
-  console.error('Missing APIFY_TOKEN env var.');
-  process.exit(1);
-}
+if (!TOKEN) { console.error('Missing APIFY_TOKEN env var.'); process.exit(1); }
 
 const DATA_DIR = path.join(__dirname, '..', 'data', 'raw');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -18,10 +14,8 @@ const COMPANIES = [
   'Kitopi','Delivery Hero','Chalhoub','Majid Al Futtaim','Emaar','Nestle','Procter & Gamble',
   'Unilever',"L'Oreal",'Estee Lauder','PepsiCo','Coca-Cola','Henkel','Reckitt','Beiersdorf','Mondelez',
 ];
-const ROLE_KEYWORDS = [
-  'digital marketing manager','performance marketing','media buying','growth marketing',
-  'senior growth manager','ecommerce manager','CRM manager','marketing analyst','social media manager'
-];
+const ROLES = ['digital marketing manager','performance marketing','media buying','growth marketing',
+  'senior growth manager','ecommerce manager','CRM manager','marketing analyst','social media manager'];
 
 function liUrl(q){
   return 'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(q) +
@@ -30,19 +24,13 @@ function liUrl(q){
 
 const ACTORS = [
   { name: 'posts', actor: 'harvestapi~linkedin-post-search',
-    input: {
-      searchQueries: [
-        'digital marketing manager Dubai','performance marketing manager Dubai',
-        'growth marketing manager Dubai','senior growth manager Dubai',
-        'paid media manager Dubai','media buyer Dubai','ecommerce manager Dubai',
-        'CRM manager Dubai','lifecycle marketing manager Dubai','social media manager Dubai',
-        'marketing data analyst Dubai','we are hiring digital marketing Dubai',
-        'looking for a growth marketer Dubai'
-      ],
-      maxPosts: 20, postedLimit: 'week', sortBy: 'date'
-    } },
+    input: { searchQueries: ['digital marketing manager Dubai','performance marketing manager Dubai',
+      'growth marketing manager Dubai','senior growth manager Dubai','paid media manager Dubai',
+      'media buyer Dubai','ecommerce manager Dubai','CRM manager Dubai','lifecycle marketing manager Dubai',
+      'social media manager Dubai','marketing data analyst Dubai','we are hiring digital marketing Dubai',
+      'looking for a growth marketer Dubai'], maxPosts: 20, postedLimit: 'week', sortBy: 'date' } },
   { name: 'lijobs', actor: 'curious_coder~linkedin-jobs-scraper',
-    input: { urls: [...ROLE_KEYWORDS.map(liUrl), ...COMPANIES.map(c => liUrl(c + ' marketing'))], count: 150, scrapeCompany: false } },
+    input: { urls: [...ROLES.map(liUrl), ...COMPANIES.map(c => liUrl(c + ' marketing'))], count: 150, scrapeCompany: false } },
   { name: 'indeed_dm', actor: 'valig~indeed-jobs-scraper',
     input: { country: 'ae', title: 'digital marketing', location: 'Dubai', limit: 40, datePosted: '7' } },
   { name: 'indeed_analyst', actor: 'valig~indeed-jobs-scraper',
@@ -56,11 +44,7 @@ const ACTORS = [
 async function runActor({ name, actor, input }){
   console.log(`[${name}] Starting ${actor}...`);
   const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${TOKEN}&timeout=600&clean=true`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input)
-  });
+  const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
   if (!resp.ok) {
     const text = await resp.text();
     console.error(`[${name}] FAILED: HTTP ${resp.status} — ${text.slice(0, 300)}`);
